@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ---------- ابزار Toast ----------
     const toastEl = document.getElementById('toast');
     function toast(msg, ms = 2200) {
       if (!toastEl) return;
@@ -10,11 +9,177 @@ document.addEventListener('DOMContentLoaded', () => {
       toastEl._t = setTimeout(() => toastEl.classList.remove('show'), ms);
     }
   
-    // ---------- ثبت بازدید پروفایل ----------
+    // حذف لودر صفحه
+    window.addEventListener('load', () => {
+      document.getElementById('page-loader')?.classList.add('hide');
+    });
+    setTimeout(() => document.getElementById('page-loader')?.classList.add('hide'), 1200);
+  
+    // ثبت بازدید پروفایل
     fetch('api/visit.php').then(r => r.json()).then(d => {
       const el = document.getElementById('visits-num');
       if (el && d.total !== undefined) el.textContent = d.total;
     }).catch(() => {});
+  
+    // ---------- افکت اسپات‌لایت و تیلت آواتار ----------
+    try {
+      const spotlight = document.getElementById('spotlight');
+      const avatarRing = document.getElementById('avatar-ring');
+      document.addEventListener('mousemove', e => {
+        if (spotlight) {
+          spotlight.style.setProperty('--mx', e.clientX + 'px');
+          spotlight.style.setProperty('--my', e.clientY + 'px');
+        }
+        if (avatarRing) {
+          const r = avatarRing.getBoundingClientRect();
+          const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+          const dx = (e.clientX - cx) / r.width, dy = (e.clientY - cy) / r.height;
+          if (Math.abs(dx) < 4 && Math.abs(dy) < 4) {
+            avatarRing.style.transform = `rotateY(${dx * 12}deg) rotateX(${-dy * 12}deg)`;
+          }
+        }
+      });
+      avatarRing?.addEventListener('mouseleave', () => { avatarRing.style.transform = ''; });
+    } catch (e) {}
+  
+    // ---------- انیمیشن ظاهرشدن هنگام اسکرول ----------
+    try {
+      const revealEls = document.querySelectorAll('.reveal');
+      const io2 = new IntersectionObserver(entries => {
+        entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in-view'); io2.unobserve(en.target); } });
+      }, { threshold: 0.12 });
+      revealEls.forEach(el => io2.observe(el));
+    } catch (e) {}
+  
+    // ---------- دکمهٔ اسکرول به بالا ----------
+    try {
+      const scrollBtn = document.getElementById('scroll-top-btn');
+      window.addEventListener('scroll', () => {
+        scrollBtn?.classList.toggle('show', window.scrollY > 400);
+      });
+      scrollBtn?.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+    } catch (e) {}
+  
+    // ---------- کپی یوزرنیم ----------
+    try {
+      document.getElementById('username-btn')?.addEventListener('click', async () => {
+        await navigator.clipboard.writeText('@' + (window.PROFILE_USERNAME || ''));
+        toast('یوزرنیم کپی شد');
+      });
+    } catch (e) {}
+  
+    // ---------- تب‌ها ----------
+    try {
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabBtns.forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('tab-' + btn.dataset.tab)?.classList.add('active');
+        });
+      });
+    } catch (e) {}
+  
+    // ---------- افزودن مخاطب (vCard) ----------
+    try {
+      document.getElementById('vcard-btn')?.addEventListener('click', () => {
+        const name = window.PROFILE_NAME || 'مخاطب';
+        const phone = window.PROFILE_PHONE || '';
+        if (!phone) { toast('شماره تماس ثبت نشده'); return; }
+        const vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${name}\nTEL;TYPE=CELL:${phone}\nEND:VCARD`;
+        const blob = new Blob([vcard], { type: 'text/vcard' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = name + '.vcf';
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+        toast('فایل مخاطب دانلود شد');
+      });
+    } catch (e) {}
+  
+    // ---------- گالری + لایت‌باکس ----------
+    try {
+      const gallery = window.GALLERY || [];
+      const lightbox = document.getElementById('lightbox-modal');
+      const lbImg = document.getElementById('lightbox-img');
+      let lbIndex = 0;
+      function openLightbox(i) {
+        lbIndex = i;
+        lbImg.src = gallery[i].image;
+        lightbox.classList.add('active');
+      }
+      function lbNav(dir) {
+        lbIndex = (lbIndex + dir + gallery.length) % gallery.length;
+        lbImg.src = gallery[lbIndex].image;
+      }
+      document.querySelectorAll('.gallery-item').forEach(el => {
+        el.addEventListener('click', () => openLightbox(+el.dataset.index));
+      });
+      document.getElementById('lightbox-close')?.addEventListener('click', () => lightbox.classList.remove('active'));
+      document.getElementById('lightbox-next')?.addEventListener('click', () => lbNav(1));
+      document.getElementById('lightbox-prev')?.addEventListener('click', () => lbNav(-1));
+      lightbox?.addEventListener('click', e => { if (e.target === lightbox) lightbox.classList.remove('active'); });
+      document.addEventListener('keydown', e => {
+        if (!lightbox?.classList.contains('active')) return;
+        if (e.key === 'Escape') lightbox.classList.remove('active');
+        if (e.key === 'ArrowLeft') lbNav(1);
+        if (e.key === 'ArrowRight') lbNav(-1);
+      });
+    } catch (e) { console.error('خطا در گالری:', e); }
+  
+    // ---------- دفترچه یادگاری ----------
+    try {
+      const form = document.getElementById('guestbook-form');
+      const list = document.getElementById('guestbook-list');
+      function timeAgoShort(ts) {
+        const diff = Math.floor(Date.now() / 1000) - ts;
+        if (diff < 60) return 'همین الان';
+        if (diff < 3600) return Math.floor(diff / 60) + ' دقیقه پیش';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' ساعت پیش';
+        return Math.floor(diff / 86400) + ' روز پیش';
+      }
+      document.querySelectorAll('.gb-time').forEach(el => {
+        el.textContent = timeAgoShort(+el.dataset.time);
+      });
+      form?.addEventListener('submit', async e => {
+        e.preventDefault();
+        const name = document.getElementById('gb-name').value;
+        const message = document.getElementById('gb-message').value;
+        const website = document.getElementById('gb-honeypot').value;
+        if (!message.trim()) return;
+        const res = await fetch('api/guestbook.php', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'add', name, message, website })
+        }).then(r => r.json()).catch(() => null);
+        if (res?.ok) {
+          toast('پیامت ثبت شد ✅');
+          document.querySelector('.empty-msg')?.remove();
+          const item = document.createElement('div');
+          item.className = 'guestbook-item';
+          item.dataset.id = res.entry.id;
+          item.innerHTML = `<div class="gb-avatar">${res.entry.name.charAt(0)}</div>
+            <div class="gb-body"><p class="gb-name">${res.entry.name} <span class="gb-time">همین الان</span></p>
+            <p class="gb-message">${res.entry.message.replace(/\n/g,'<br>')}</p></div>`;
+          list.insertBefore(item, list.firstChild);
+          form.reset();
+        } else {
+          toast(res?.error || 'خطا در ارسال پیام');
+        }
+      });
+      list?.addEventListener('click', async e => {
+        const btn = e.target.closest('.gb-delete');
+        if (!btn) return;
+        const item = btn.closest('.guestbook-item');
+        if (!confirm('این پیام حذف شود؟')) return;
+        const res = await fetch('api/guestbook.php', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'delete', id: item.dataset.id, csrf: window.CSRF })
+        }).then(r => r.json()).catch(() => null);
+        if (res?.ok) { item.remove(); toast('پیام حذف شد'); }
+        else toast(res?.error || 'خطا در حذف');
+      });
+    } catch (e) { console.error('خطا در دفترچه یادگاری:', e); }
   
     // ---------- بخش استوری‌ها ----------
     try {
@@ -356,12 +521,31 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('خطا در بخش استوری‌ها:', err);
     }
   
-    // ---------- بخش پلیر آهنگ ----------
+    // ---------- پلی‌لیست موزیک ----------
     try {
+      const playlist = window.PLAYLIST || [];
       const audio = document.getElementById('audio-player');
       const playBtn = document.getElementById('play-btn');
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
       const vinyl = document.getElementById('vinyl');
+      const vinylCover = document.getElementById('vinyl-cover');
+      const titleEl = document.getElementById('song-title');
+      const artistEl = document.getElementById('song-artist');
       const fill = document.getElementById('progress-fill');
+      const progressBarEl = document.getElementById('music-progress');
+      let trackIndex = 0;
+  
+      function loadTrack(i, autoplay) {
+        if (!playlist[i]) return;
+        trackIndex = i;
+        const t = playlist[i];
+        audio.src = t.file;
+        titleEl.textContent = t.title;
+        artistEl.textContent = t.artist;
+        vinylCover.src = t.cover || '';
+        if (autoplay) audio.play().catch(() => {});
+      }
   
       if (audio && playBtn) {
         playBtn.addEventListener('click', () => {
@@ -380,9 +564,17 @@ document.addEventListener('DOMContentLoaded', () => {
           if (audio.duration && fill) fill.style.width = (audio.currentTime / audio.duration * 100) + '%';
         });
         audio.addEventListener('ended', () => {
-          vinyl?.classList.remove('playing');
-          playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+          if (playlist.length > 1) { loadTrack((trackIndex + 1) % playlist.length, true); }
+          else { vinyl?.classList.remove('playing'); playBtn.innerHTML = '<i class="fa-solid fa-play"></i>'; }
         });
+        progressBarEl?.addEventListener('click', e => {
+          if (!audio.duration) return;
+          const rect = progressBarEl.getBoundingClientRect();
+          const ratio = (e.clientX - rect.left) / rect.width;
+          audio.currentTime = ratio * audio.duration;
+        });
+        nextBtn?.addEventListener('click', () => loadTrack((trackIndex + 1) % playlist.length, true));
+        prevBtn?.addEventListener('click', () => loadTrack((trackIndex - 1 + playlist.length) % playlist.length, true));
       }
     } catch (err) { console.error('خطا در بخش پلیر آهنگ:', err); }
   
@@ -404,7 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) { console.error('خطا در بخش تغییر تم:', err); }
   
-    // ---------- پارتیکل پس‌زمینه ----------
+    // ---------- پارتیکل پس‌زمینه با اتصال ذرات ----------
     try {
       const canvas = document.getElementById('bg-canvas');
       if (canvas) {
@@ -412,18 +604,28 @@ document.addEventListener('DOMContentLoaded', () => {
         function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
         resize();
         window.addEventListener('resize', resize);
-        const particles = Array.from({length: 40}, () => ({
+        const particles = Array.from({length: 55}, () => ({
           x: Math.random()*innerWidth, y: Math.random()*innerHeight,
           r: Math.random()*2 + 1, dx: (Math.random()-0.5)*0.3, dy: (Math.random()-0.5)*0.3,
         }));
         function animate() {
           ctx.clearRect(0,0,canvas.width,canvas.height);
-          particles.forEach(p => {
+          particles.forEach((p, i) => {
             p.x += p.dx; p.y += p.dy;
             if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
             if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
             ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-            ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fill();
+            for (let j = i + 1; j < particles.length; j++) {
+              const q = particles[j];
+              const dist = Math.hypot(p.x - q.x, p.y - q.y);
+              if (dist < 120) {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+                ctx.strokeStyle = `rgba(124,92,255,${0.12 * (1 - dist/120)})`;
+                ctx.lineWidth = 1; ctx.stroke();
+              }
+            }
           });
           requestAnimationFrame(animate);
         }

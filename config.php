@@ -5,10 +5,12 @@ session_start();
 define('BASE_PATH', __DIR__);
 define('STORIES_DIR', BASE_PATH . '/stories');
 define('DATA_DIR', BASE_PATH . '/data');
+define('GALLERY_DIR', BASE_PATH . '/assets/img/gallery');
 define('PROFILE_FILE', DATA_DIR . '/profile.json');
 define('STATS_FILE', DATA_DIR . '/stats.json');
 define('STORIES_META_FILE', DATA_DIR . '/stories_meta.json');
 define('VISITS_FILE', DATA_DIR . '/visits.json');
+define('GUESTBOOK_FILE', DATA_DIR . '/guestbook.json');
 
 // --- ورود ادمین ---
 define('ADMIN_USER', 'admin');
@@ -21,42 +23,52 @@ define('STORY_DEFAULT_DURATION', 5000);      // مدت‌زمان پیش‌فر�
 define('STORY_MAX_VIDEO_DURATION', 15000);   // سقف مدت‌زمان ویدیو در ویووِر
 define('STORY_MAX_UPLOAD_SIZE', 25 * 1024 * 1024); // 25MB
 
+// --- تنظیمات دفترچه یادگاری ---
+define('GUESTBOOK_MAX_LEN', 300);
+define('GUESTBOOK_RATE_LIMIT_SEC', 30); // فاصلهٔ مجاز بین دو پیام از یک نشست
+
 $GLOBALS['ALLOWED_STORY_MIME'] = [
     'jpg' => ['image/jpeg'], 'jpeg' => ['image/jpeg'], 'png' => ['image/png'],
     'gif' => ['image/gif'], 'webp' => ['image/webp'],
     'mp4' => ['video/mp4'], 'webm' => ['video/webm'],
 ];
+$GLOBALS['ALLOWED_IMAGE_MIME'] = [
+    'jpg' => ['image/jpeg'], 'jpeg' => ['image/jpeg'], 'png' => ['image/png'],
+    'gif' => ['image/gif'], 'webp' => ['image/webp'],
+];
 
-if (!is_dir(STORIES_DIR)) mkdir(STORIES_DIR, 0755, true);
-if (!is_dir(DATA_DIR)) mkdir(DATA_DIR, 0755, true);
+foreach ([STORIES_DIR, DATA_DIR, GALLERY_DIR] as $dir) {
+    if (!is_dir($dir)) mkdir($dir, 0755, true);
+}
 
 if (!file_exists(PROFILE_FILE)) {
     $default = [
         "name" => "نام شما",
-        "username" => "Arshipesarr@",
-        "bio" => "Lose Yourself",
+        "username" => "username",
+        "bio" => "بیو خودتو اینجا بنویس",
         "avatar" => "assets/img/avatar.jpg",
         "online" => true,
-        "song" => [
+        "stats" => ["followers" => 0, "following" => 0],
+        "contact" => ["phone" => "", "email" => ""],
+        "playlist" => [[
             "title" => "نام آهنگ", "artist" => "نام خواننده",
             "file" => "assets/audio/song.mp3", "cover" => "assets/img/song-cover.jpg"
-        ],
+        ]],
         "socials" => [
-            ["name" => "Telegram", "icon" => "fa-telegram", "url" => "https://t.me/Arshi_pesar"],
-            ["name" => "Instagram", "icon" => "fa-instagram", "url" => "https://instagram.com/Arshipesarr"],
+            ["name" => "Telegram", "icon" => "fa-telegram", "url" => "https://t.me/"],
         ],
         "skills" => [
-            ["name" => "PHP", "level" => 85],
-            ["name" => "JavaScript", "level" => 80],
-            ["name" => "طراحی UI/UX", "level" => 70],
+            ["name" => "PHP", "level" => 85, "icon" => "fa-brands fa-php"],
         ],
-        "projects" => []
+        "projects" => [],
+        "gallery" => []
     ];
     file_put_contents(PROFILE_FILE, json_encode($default, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
 }
 if (!file_exists(STATS_FILE)) file_put_contents(STATS_FILE, json_encode([]));
 if (!file_exists(STORIES_META_FILE)) file_put_contents(STORIES_META_FILE, json_encode([]));
 if (!file_exists(VISITS_FILE)) file_put_contents(VISITS_FILE, json_encode(['total' => 0, 'days' => []]));
+if (!file_exists(GUESTBOOK_FILE)) file_put_contents(GUESTBOOK_FILE, json_encode([]));
 
 // --- CSRF ---
 function csrf_token(): string {
@@ -84,4 +96,19 @@ function write_json_locked(string $file, $data): void {
     fwrite($fp, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     flock($fp, LOCK_UN);
     fclose($fp);
+}
+
+// --- نرمال‌سازی پروفایل برای همخوانی با نسخه‌های قدیمی داده ---
+function normalize_profile(array $p): array {
+    $p['skills'] = $p['skills'] ?? [];
+    $p['projects'] = $p['projects'] ?? [];
+    $p['gallery'] = $p['gallery'] ?? [];
+    $p['stats'] = $p['stats'] ?? ['followers' => 0, 'following' => 0];
+    $p['contact'] = $p['contact'] ?? ['phone' => '', 'email' => ''];
+    if (!isset($p['playlist']) && isset($p['song'])) {
+        $p['playlist'] = [$p['song']];
+    }
+    $p['playlist'] = $p['playlist'] ?? [];
+    $p['socials'] = $p['socials'] ?? [];
+    return $p;
 }
