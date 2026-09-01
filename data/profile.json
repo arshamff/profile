@@ -1,0 +1,25 @@
+{
+    "name": "Arshipesar",
+    "username": "@Arshipesarr",
+    "bio": "Lose Yourself",
+    "avatar": "assets\/img\/avatar.jpg",
+    "online": true,
+    "song": {
+        "title": "انتظار ",
+        "artist": "امیر تتلو",
+        "file": "assets\/audio\/song.mp3",
+        "cover": "assets\/img\/song-cover.jpg"
+    },
+    "socials": [
+        {
+            "name": "Telegram",
+            "icon": "fa-telegram",
+            "url": "https:\/\/t.me\/Arshi_pesar"
+        },
+        {
+            "name": "Instagram",
+            "icon": "fa-instagram",
+            "url": "https:\/\/instagram.com\/Arshipesarr"
+        }
+    ]
+}
