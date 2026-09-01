@@ -1,0 +1,12 @@
+{
+    "name": "پروفایل من",
+    "short_name": "پروفایل",
+    "start_url": "index.php",
+    "display": "standalone",
+    "background_color": "#0b0b14",
+    "theme_color": "#0b0b14",
+    "icons": [
+      { "src": "assets/img/avatar.jpg", "sizes": "192x192", "type": "image/jpeg" }
+    ]
+  }
+  

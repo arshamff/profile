@@ -14,8 +14,7 @@ if (!$id || !in_array($action, ['like','view']) || !file_exists(STORIES_DIR . '/
 
 $fp = fopen(STATS_FILE, 'c+');
 flock($fp, LOCK_EX);
-$content = stream_get_contents($fp);
-$stats = json_decode($content, true) ?: [];
+$stats = json_decode(stream_get_contents($fp), true) ?: [];
 if (!isset($stats[$id])) $stats[$id] = ['views' => 0, 'likes' => 0];
 
 $liked = null;
@@ -31,7 +30,11 @@ if ($action === 'like') {
         $liked = true;
     }
 } else {
-    $stats[$id]['views']++;
+    $_SESSION['viewed'] = $_SESSION['viewed'] ?? [];
+    if (!in_array($id, $_SESSION['viewed'])) {
+        $stats[$id]['views']++;
+        $_SESSION['viewed'][] = $id;
+    }
 }
 
 ftruncate($fp, 0);
